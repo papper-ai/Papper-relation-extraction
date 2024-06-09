@@ -1,6 +1,0 @@
-fastapi==0.110.2
-uvicorn==0.29.0
-pydantic-settings==2.2.1
-qdrant-client==1.9.0
-langchain==0.1.16
-openai==1.23.6

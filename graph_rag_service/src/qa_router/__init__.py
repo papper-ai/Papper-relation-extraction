@@ -1,1 +1,0 @@
-from src.qa_router.router import router as qa_router

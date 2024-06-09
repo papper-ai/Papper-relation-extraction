@@ -1,123 +1,20 @@
 services:
-  qdrant:
-    image: qdrant/qdrant:v1.9.0
-    ports:
-      - 8610:6333
-      - 8611:6334
+  relation_extraction_model:
+    build: relation_extraction_model
+    restart: unless-stopped
+    deploy:
+      resources:
+          reservations:
+              devices:
+                  - driver: nvidia
+                    device_ids: ['1']
+                    capabilities: [ gpu ]
     volumes:
-      - ./qdrant_storage:/qdrant/storage
-    networks:
-      - vaults_services_network
-  vector_kb_service:
-    build: vector_kb_service
-    volumes:
-      - ./vector_kb_service:/usr/src/vector_kb_service
+      - ./relation_extraction_model:/usr/src/seq2seq
+      - /home/ontollm/.cache/huggingface/hub:/home/papper_user/.cache/huggingface/hub
     env_file:
-      ./vector_kb_service/.env
+      - ./relation_extraction_model/.env
     ports:
-      - 8600:8000
+      - 8003:8000
     command: >
-      sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-config /usr/src/vector_kb_service/uvicorn_logging.conf"
-    networks:
-      - vaults_services_network
-  vector_rag_service:
-    build: vector_rag_service
-    env_file:
-      ./vector_rag_service/.env
-    volumes:
-      - ./vector_rag_service:/usr/src/vector_rag_service
-    ports:
-     - 8700:8000
-    command: >
-      sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-config /usr/src/vector_rag_service/uvicorn_logging.conf"
-    networks:
-      - vector_rag_service_network
-      - vaults_services_network
-      - papper-backend
-  neo4j:
-    image: neo4j:5.17.0-enterprise
-    volumes:
-      - graph_data:/data
-    environment:
-      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD}
-      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-    ports:
-      - 8290:7474
-      - 8291:7687
-    networks:
-      - vaults_services_network
-  graph_kb_service:
-    build: graph_kb_service
-    volumes:
-      - ./graph_kb_service:/usr/src/graph_kb_service
-    env_file:
-      - ./graph_kb_service/.env
-    depends_on:
-      - neo4j
-    ports:
-      - 8210:8000
-    command: >
-      sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-config /usr/src/graph_kb_service/uvicorn_logging.conf"
-    networks:
-      - vaults_services_network
-  graph_rag_service:
-    build: graph_rag_service
-    volumes:
-      - ./graph_rag_service:/usr/src/graph_rag_service
-    env_file:
-      - ./graph_rag_service/.env
-    depends_on:
-      - neo4j
-    ports:
-      - 8500:8000
-    command: >
-      sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-config /usr/src/graph_rag_service/uvicorn_logging.conf"
-    networks:
-      - graph_rag_service_network
-      - vaults_services_network
-      - papper-backend
-  vaults_service_postgres:
-    image: postgres:16.1-bullseye
-    volumes:
-      - vaults_service_postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=${VAULTS_SERVICE_POSTGRES_DB_NAME}
-      - POSTGRES_USER=${VAULTS_SERVICE_POSTGRES_DB_USER}
-      - POSTGRES_PASSWORD=${VAULTS_SERVICE_POSTGRES_DB_PASSWORD}
-    ports:
-      - 8280:5432
-    networks:
-      - vaults_services_network
-  vaults_service:
-    build: vaults_service
-    volumes:
-      - ./vaults_service:/usr/src/vaults_service
-    env_file:
-      - ./vaults_service/.env
-    ports:
-      - 8200:8000
-    depends_on:
-      - vaults_service_postgres
-      - graph_kb_service
-    networks:
-      - vaults_services_network
-      - papper-backend
-    command: >
-      sh -c "alembic upgrade head && 
-      uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-config /usr/src/vaults_service/uvicorn_logging.conf"
-
-volumes:
-  graph_data:
-  vaults_service_postgres_data:
-  qdrant_storage:
-
-networks:
-  vaults_services_network:
-    name: vaults_services_network
-  graph_rag_service_network:
-    name: graph_rag_service_network
-  vector_rag_service_network:
-    name: vector_rag_service_network
-  papper-backend:
-    name: papper-backend
-    external: true
+      sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload --log-config /usr/src/seq2seq/uvicorn_logging.conf"
